@@ -1,0 +1,66 @@
+{
+    "ee":
+    {
+        "2016a":
+        {
+            "B_ver2": "ISRAnalyzer_DoubleEG_B_ver2.root",
+            "C": "ISRAnalyzer_DoubleEG_C.root",
+            "D": "ISRAnalyzer_DoubleEG_D.root",
+            "E": "ISRAnalyzer_DoubleEG_E.root",
+            "F": "ISRAnalyzer_DoubleEG_F.root"
+        },
+        "2016b":
+        {
+            "F": "ISRAnalyzer_DoubleEG_F.root",
+            "G": "ISRAnalyzer_DoubleEG_G.root",
+            "H": "ISRAnalyzer_DoubleEG_H.root"
+        },
+        "2017":
+        {
+            "B": "ISRAnalyzer_DoubleEG_B.root",
+            "C": "ISRAnalyzer_DoubleEG_C.root",
+            "D": "ISRAnalyzer_DoubleEG_D.root",
+            "E": "ISRAnalyzer_DoubleEG_E.root",
+            "F": "ISRAnalyzer_DoubleEG_F.root"
+        },
+        "2018":
+        {
+            "A": "ISRAnalyzer_EGamma_A.root",
+            "B": "ISRAnalyzer_EGamma_B.root",
+            "C": "ISRAnalyzer_EGamma_C.root",
+            "D": "ISRAnalyzer_EGamma_D.root"
+        }
+    },
+    "mm":
+    {
+        "2016a":
+        {
+            "B_ver2": "ISRAnalyzer_DoubleMuon_B_ver2.root",
+            "C": "ISRAnalyzer_DoubleMuon_C.root",
+            "D": "ISRAnalyzer_DoubleMuon_D.root",
+            "E": "ISRAnalyzer_DoubleMuon_E.root",
+            "F": "ISRAnalyzer_DoubleMuon_F.root"
+        },
+        "2016b":
+        {
+            "F": "ISRAnalyzer_DoubleMuon_F.root",
+            "G": "ISRAnalyzer_DoubleMuon_G.root",
+            "H": "ISRAnalyzer_DoubleMuon_H.root"
+        },
+        "2017":
+        {
+            "B": "ISRAnalyzer_DoubleMuon_B.root",
+            "C": "ISRAnalyzer_DoubleMuon_C.root",
+            "D": "ISRAnalyzer_DoubleMuon_D.root",
+            "E": "ISRAnalyzer_DoubleMuon_E.root",
+            "F": "ISRAnalyzer_DoubleMuon_F.root"
+        },
+        "2018":
+        {
+            "A": "ISRAnalyzer_DoubleMuon_A.root",
+            "B": "ISRAnalyzer_DoubleMuon_B.root",
+            "C": "ISRAnalyzer_DoubleMuon_C.root",
+            "D": "ISRAnalyzer_DoubleMuon_D.root"
+        }
+    }
+}

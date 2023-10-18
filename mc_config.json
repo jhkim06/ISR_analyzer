@@ -1,0 +1,13 @@
+{
+    "DYJets": "ISRAnalyzer_DYJets.root",
+    "DYJetsToEE_MiNNLO": "ISRAnalyzer_DYJetsToEE_MiNNLO.root",
+    "DYJetsToMuMu_MiNNLO": "ISRAnalyzer_DYJetsToMuMu_MiNNLO.root",
+    "tau": "ISRAnalyzer_DYJets.root",
+    "tau_DYJetsToEE_MiNNLO": "ISRAnalyzer_DYJetsToEE_MiNNLO.root",
+    "top": "ISRAnalyzer_SingleTop_tW_top_NoFullyHad.root",
+    "antitop": "ISRAnalyzer_SingleTop_tW_antitop_NoFullyHad.root",
+    "TTLL": "ISRAnalyzer_TTLL_powheg.root",
+    "ZZ": "ISRAnalyzer_ZZ_pythia.root",
+    "WZ": "ISRAnalyzer_WZ_pythia.root",
+    "WW": "ISRAnalyzer_WW_pythia.root"
+}
