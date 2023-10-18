@@ -1,0 +1,3 @@
+*.ipynb
+plots/
+_pycache__/
