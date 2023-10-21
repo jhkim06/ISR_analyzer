@@ -129,6 +129,9 @@ class Plotter:
             adjust_x_lim(self.current_axis, bins)
             self.set_labels(bins, hist.bins)
 
+    def make_plot(self):
+        pass
+
     def draw_ratio(self, ymin=0.5, ymax=1.5):
         # TODO loop over sub_hists
         ratio = self.sub_hists.divide(self.primary_hist)
@@ -233,7 +236,8 @@ class Plotter:
             bins = hist.bins
         return bins
 
-    def draw_hist(self, raw_hist, show_mean_line=False, **kwargs):
+    def draw_hist(self, raw_hist, show_mean_line=False, save_fig=False,
+                  ymin=-1, ymax=-1, **kwargs):
         if self.fig is None:
             self.rows = 1
             self.cols = 1
@@ -255,6 +259,8 @@ class Plotter:
         artist = hep.histplot((hist.values, bins), ax=self.current_axis, yerr=hist.errors,
                               label=label, **kwargs)
 
+        if ymin != -1 and ymax != -1:
+            self.current_axis.set_ylim(ymin, ymax)
         if show_mean_line:
             # print(artist[0].get_color())
             mean = raw_hist.get_mean(binned_mean=True)
@@ -275,7 +281,17 @@ class Plotter:
             self.current_axis.add_patch(legend_)
 
         self.x_axis_cosmetic(hist, bins)
-        return artist
+
+        if save_fig:
+            final_plot_name = self.out_dir + raw_hist.hist_name
+            if self.text:
+                final_plot_name += "_" + self.text
+            print(f"save plot... {final_plot_name}")
+            self.save_plot(final_plot_name)  # fixme save path
+            self.reset()
+            plt.close()
+        else:
+            return artist
 
     def draw_stack(self, raw_hist, use_mplhep=True, **kwargs):
         stack, labels = raw_hist.get_stack()
@@ -317,7 +333,7 @@ class Plotter:
             self.rows = 1
             self.cols = 1
 
-            self.fig, self.axs = plt.subplots(self.rows, self.cols, figsize=(10, 8))
+            self.fig, self.axs = plt.subplots(self.rows, self.cols, figsize=(10, 7))
             self.set_current_axis(0, 0)
             plt.subplots_adjust(left=0.15, right=0.95, bottom=0.15, top=0.9, hspace=0.05)
             self.set_isr_plot_cosmetics(ymin, ymax, xmin, xmax)

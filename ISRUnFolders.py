@@ -37,6 +37,9 @@ class ISRUnFolders:
                 else:
                     unfolder_container.append(UnFolder(matrix[i], input_hist[i], bg_hist[i]))
 
+    def get_unfolders_config(self):
+        return self.channel, self.period, self.hist_path_postfix
+
     def unfold(self):
         for i in range(len(self.mass_unfolders)):
             self.mass_unfolders[i].do_unfold()
@@ -78,7 +81,7 @@ class ISRUnFolders:
         return full_phase_data_hist
 
     def acceptance_corrections(self, hist_producer):
-        hist_producer.set_base_configs(self.period, self.channel, self.file_path_postfix, self.hist_path_postfix)
+        hist_producer.set_base_configs(self.period, self.channel, self.file_path_postfix, "")
         full_phase_mass_data_hist = self.acceptance_correction(hist_producer)
         full_phase_pt_data_hist = self.acceptance_correction(hist_producer, 'pt')
 
@@ -97,7 +100,7 @@ class ISRUnFolders:
 
     def get_mc_full_phase_isr_hists(self, hist_producer):
         hist_producer.set_base_configs(self.period, self.channel,
-                                       hist_path_postfix=self.hist_path_postfix)
+                                       hist_path_postfix="")
 
         mass_hist = self.full_phase_isr_hists.get_mass_hist()
 
@@ -141,6 +144,7 @@ class ISRUnFolders:
         elif level_name == 'unfolded':
             return self.make_mc_isr_hists(unfolded=True)
         elif level_name == 'full_phase':
+
             return self.get_mc_full_phase_isr_hists(hist_producer)
         else:
             print('check ' + level_name)

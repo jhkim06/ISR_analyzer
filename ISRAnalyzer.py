@@ -79,7 +79,6 @@ class ISRAnalyzer(Analyzer):
             force_1d_output = True
         else:
             force_1d_output = False
-
         data_hists = self.hist_producer.get_data_hist(force_1d_output=force_1d_output)
         total_expectation_hists = self.hist_producer.get_total_expectation_hist(force_1d_output=force_1d_output)
 
@@ -137,6 +136,33 @@ class ISRAnalyzer(Analyzer):
     def unfold(self, channel, period):
         self.unfolders[channel + period].unfold()
 
+    def draw_acceptance_x_efficiency_plots(self, channel, period, draw_mass=True):
+        # acceptance x efficiency
+        # from matrix, get unfolded hist and divide by full_phase hist
+        channel, period, hist_path_postfix = self.unfolders[channel + period].get_unfolders_config()
+        self.plotter.set_period_channel(period, channel, hist_path_postfix)
+
+        unfolded_isr_hist = self.unfolders[channel + period].get_mc_isr_hists('unfolded', self.hist_producer)
+        full_phase_isr_hist = self.unfolders[channel + period].get_mc_isr_hists('full_phase', self.hist_producer)
+
+        if draw_mass:
+            unfolded = unfolded_isr_hist.get_mass_hist()
+            full_phase = full_phase_isr_hist.get_mass_hist()
+
+            hist = unfolded.divide(full_phase)
+            x_axis_label = '$\mathit{m ^{' + channel + '}}$ [GeV]'
+            self.plotter.draw_hist(hist, ymin=0.0, ymax=1.05,
+                                   save_fig=True, xerr=True, histtype='errorbar')
+        else:
+            unfolded = unfolded_isr_hist.get_pt_hist(-1)
+            full_phase = full_phase_isr_hist.get_pt_hist(-1)
+
+            x_axis_label = '$\mathit{p_T ^{' + channel + '}}$ [GeV]'
+            for index in range(len(unfolded)):
+                hist = unfolded[index].divide(full_phase[index])
+                self.plotter.draw_hist(hist, ymin=0.0, ymax=1.05,
+                                       save_fig=True, xerr=True, histtype='errorbar')
+
     def acceptance_corrections(self, channel, period):
         self.unfolders[channel + period].acceptance_corrections(self.hist_producer)
 
@@ -163,7 +189,6 @@ class ISRAnalyzer(Analyzer):
                                              new_fig=False,
                                              color='gray', label=label)
 
-    # def draw_unfolded_data(self, channel, period, show_mc=True, bin_width_norm=True, draw_mass=True)
     def draw_unfolded_data(self, channel, period, show_mc=True, bin_width_norm=True, draw_mass=True):
         period = self.unfolders[channel + period].period
         channel = self.unfolders[channel + period].channel
@@ -190,6 +215,10 @@ class ISRAnalyzer(Analyzer):
                 self.plotter.draw_comparison(expectation[index], unfolded_data[index],
                                              x_axis_label=x_axis_label)
 
-    def draw_uncertainty_plot(self):
-        mass_df, pt_df = self.unfolded_isr_hists.get_isr_dataframe()
+    def draw_uncertainty_plot(self, channel, period):
+        hist_path_postfix = self.unfolders[channel + period].hist_path_postfix
+        isr_hists = self.unfolders[channel + period].get_isr_hists("full_phase")
+        mass_df, pt_df = isr_hists.get_isr_dataframe()
+
+        self.plotter.set_period_channel(period, channel, hist_path_postfix)
         self.plotter.draw_isr_error_df(pt_df)
