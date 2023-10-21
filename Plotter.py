@@ -208,7 +208,10 @@ class Plotter:
         # bottom
         if show_ratio:
             axis = self.set_current_axis(1, 0)
-            self.draw_ratio(kwargs["ymin"], kwargs["ymax"])
+            if 'ymin' in kwargs and 'ymax' in kwargs:
+                self.draw_ratio(kwargs["ymin"], kwargs["ymax"])
+            else:
+                self.draw_ratio()
         if 'x_axis_label' in kwargs:
             axis.set_xlabel(kwargs['x_axis_label'], fontsize=20)
         else:
@@ -315,17 +318,18 @@ class Plotter:
             self.cols = 1
 
             self.fig, self.axs = plt.subplots(self.rows, self.cols, figsize=(10, 8))
+            self.set_current_axis(0, 0)
             plt.subplots_adjust(left=0.15, right=0.95, bottom=0.15, top=0.9, hspace=0.05)
+            self.set_isr_plot_cosmetics(ymin, ymax, xmin, xmax)
 
         stat_type = "mean"
         error_name = "total error"
-        axis = self.set_current_axis(0, 0)
-        hep.cms.label("Preliminary", data=True, year=self.period, ax=axis, fontsize=20, loc=0)
+
+        hep.cms.label("Preliminary", data=True, year=self.period, ax=self.current_axis, fontsize=20, loc=0)
         self.current_axis.errorbar(dimass_df[stat_type], dipt_df[stat_type],
                                    xerr=dimass_df[error_name], yerr=dipt_df[error_name],
                                    marker='o', **kwargs)
-
-        self.set_isr_plot_cosmetics(ymin, ymax, xmin, xmax)
+        hep.plot.hist_legend(self.current_axis, loc='best')
 
         final_plot_name = self.out_dir + "isr_result"
         print(f"save plot... {final_plot_name}")
@@ -352,7 +356,6 @@ class Plotter:
         axis.set_ylabel("Mean transverse momentum [GeV]", fontsize=20)
         axis.set_xlabel("Mean mass [GeV]", fontsize=20)
 
-        hep.plot.hist_legend(axis, loc='best')
         axis.grid(axis='x', which='both')
         axis.grid(axis='y')
 

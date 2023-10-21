@@ -30,14 +30,18 @@ class Analyzer:
             return r'\mu\mu'
 
     def set_base_config(self, period, channel,
-                        file_path_postfix='', hist_path_postfix=''):
+                        file_path_postfix='',
+                        hist_path_postfix=''):
 
         self.period = period
         self.channel = channel
         self.file_path_postfix = file_path_postfix
+
         self.hist_producer.set_base_configs(period, channel,
-                                            file_path_postfix, hist_path_postfix)
-        self.plotter.set_period_channel(period, channel, hist_path_postfix)
+                                            file_path_postfix,
+                                            hist_path_postfix)
+        self.plotter.set_period_channel(period, channel,
+                                        hist_path_postfix)
 
     def draw_data_expectations(self, hist_name, hist_path_postfix="",
                                bin_width_norm=False, axis_steering="", figsize=(8, 8), **kwargs):
