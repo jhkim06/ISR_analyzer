@@ -43,8 +43,11 @@ class ISRHists:
     def get_pt_hist(self, mass_index, bin_width_norm=False):
         # TODO error handle for invalid mass_index
         if mass_index == -1:
-            for hist in self.pt_isr_hists:
+            for index, hist in enumerate(self.pt_isr_hists):
                 hist.set_hist_config(bin_width_norm, '')
+                text = ("{:.0f}".format(float(self.mass_windows[index][0])) + r"$\mathit{ < m < }$" +
+                        "{:.0f}".format(float(self.mass_windows[index][1])) + " GeV")
+                hist.set_text_for_plot(text)
             return self.pt_isr_hists
         else:
             self.pt_isr_hists[mass_index].set_hist_config(bin_width_norm, '')

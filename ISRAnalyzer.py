@@ -11,7 +11,6 @@ def get_full_phase_hist_name(hist):
 
 class ISRAnalyzer(Analyzer):
     def __init__(self, file_pather, signal_dict=None, bg_dict=None):
-
         super().__init__(file_pather, signal_dict, bg_dict)
         self.analysis_name = "ISR"
 
@@ -29,9 +28,9 @@ class ISRAnalyzer(Analyzer):
 
         self.unfolders = {}
 
-        self.bg_used = True
-        if bg_dict is None:
-            self.bg_used = False
+        self.bg_used = False
+        if bg_dict:
+            self.bg_used = True
 
         self.input_data_isr_hists = None  # before bkg. subtraction
 
@@ -79,14 +78,41 @@ class ISRAnalyzer(Analyzer):
             force_1d_output = True
         else:
             force_1d_output = False
+
         data_hists = self.hist_producer.get_data_hist(force_1d_output=force_1d_output)
         total_expectation_hists = self.hist_producer.get_total_expectation_hist(force_1d_output=force_1d_output)
 
         self.plotter.set_period_channel(period, channel, hist_path_postfix)
         for index in range(len(data_hists)):
-            self.plotter.draw_comparison(total_expectation_hists[index], data_hists[index],
-                                         x_axis_label=x_axis_label,
-                                         logy=True, ymin=0.5, ymax=1.5)
+            self.draw_data_expectation(data_hists[index], total_expectation_hists[index], x_axis_label)
+
+    def draw_data_expectation(self, data, expectation, x_axis_label=''):
+        self.plotter.add_hist(data, color='black', xerr=True, histtype='errorbar')
+        self.plotter.add_hist(expectation, is_denominator=True)
+
+        self.plotter.create_subplots(2, 1, figsize=(10, 10), height_ratios=[1, 0.3])
+        self.plotter.set_current_axis(0, 0)
+        self.plotter.draw()
+        self.plotter.set_yaxis_config(log_scale=True, set_min=1e-1)
+        self.plotter.set_xaxis_config(remove_tick_labels=True)
+        self.plotter.set_axis_config()
+        self.plotter.set_experiment_label()
+
+        self.plotter.set_current_axis(1, 0)
+        self.plotter.draw_ratio()
+        self.plotter.set_yaxis_config(set_min=0.5, set_max=1.5)
+        self.plotter.get_axis(1, 0).set_xlabel(x_axis_label, fontsize=30)
+        self.plotter.save_fig()
+
+    def draw(self):
+        self.plotter.create_subplots(1, 1, figsize=(10, 10))
+        self.plotter.set_current_axis(0, 0)
+        self.plotter.draw()
+        self.plotter.set_yaxis_config(label='Acc. x Eff.', set_min=0.0, set_max=1.05, set_grid=True)
+        self.plotter.set_xaxis_config(set_grid=True)
+        self.plotter.set_axis_config()
+        self.plotter.set_experiment_label('Simulation')
+        self.plotter.save_fig()
 
     def get_unfold_input_hists_and_matrix(self, is_mass=True):
         if is_mass:
@@ -120,7 +146,8 @@ class ISRAnalyzer(Analyzer):
         mass_data_hist, mass_bg_hist, mass_matrix = self.get_unfold_input_hists_and_matrix()
         pt_data_hist, pt_bg_hist, pt_matrix = self.get_unfold_input_hists_and_matrix(is_mass=False)
 
-        self.unfolders[channel + period] = ISRUnFolders(channel, period, self.mass_edges,
+        self.unfolders[channel + period] = ISRUnFolders(channel, period,
+                                                        self.mass_edges,
                                                         file_path_postfix, hist_path_postfix,
                                                         self.is_2d)
         self.unfolders[channel + period].set_unfolders(mass_data_hist, mass_matrix, mass_bg_hist)
@@ -151,8 +178,9 @@ class ISRAnalyzer(Analyzer):
 
             hist = unfolded.divide(full_phase)
             x_axis_label = '$\mathit{m ^{' + channel + '}}$ [GeV]'
-            self.plotter.draw_hist(hist, ymin=0.0, ymax=1.05,
-                                   save_fig=True, xerr=True, histtype='errorbar')
+
+            self.plotter.add_hist(hist, color='black', xerr=True, histtype='errorbar')
+            self.draw()
         else:
             unfolded = unfolded_isr_hist.get_pt_hist(-1)
             full_phase = full_phase_isr_hist.get_pt_hist(-1)
@@ -160,8 +188,9 @@ class ISRAnalyzer(Analyzer):
             x_axis_label = '$\mathit{p_T ^{' + channel + '}}$ [GeV]'
             for index in range(len(unfolded)):
                 hist = unfolded[index].divide(full_phase[index])
-                self.plotter.draw_hist(hist, ymin=0.0, ymax=1.05,
-                                       save_fig=True, xerr=True, histtype='errorbar')
+
+                self.plotter.add_hist(hist, color='black', xerr=True, histtype='errorbar')
+                self.draw()
 
     def acceptance_corrections(self, channel, period):
         self.unfolders[channel + period].acceptance_corrections(self.hist_producer)
@@ -189,7 +218,7 @@ class ISRAnalyzer(Analyzer):
                                              new_fig=False,
                                              color='gray', label=label)
 
-    def draw_unfolded_data(self, channel, period, show_mc=True, bin_width_norm=True, draw_mass=True):
+    def draw_unfolded_plots(self, channel, period, show_mc=True, bin_width_norm=True, draw_mass=True):
         period = self.unfolders[channel + period].period
         channel = self.unfolders[channel + period].channel
         hist_path_postfix = self.unfolders[channel + period].hist_path_postfix
@@ -202,18 +231,16 @@ class ISRAnalyzer(Analyzer):
             unfolded_data = data_isr_hist.get_mass_hist(bin_width_norm)
             expectation = mc_isr_hist.get_mass_hist(bin_width_norm)
 
-            x_axis_label = '$\mathit{m ^{' + channel + '}}$ [GeV]'
-            self.plotter.draw_comparison(expectation, unfolded_data,
-                                         x_axis_label=x_axis_label)
+            self.draw_data_expectation(unfolded_data, expectation)
         else:
 
             unfolded_data = data_isr_hist.get_pt_hist(-1, bin_width_norm)
             expectation = mc_isr_hist.get_pt_hist(-1, bin_width_norm)
 
             x_axis_label = '$\mathit{p_T ^{' + channel + '}}$ [GeV]'
+
             for index in range(len(unfolded_data)):
-                self.plotter.draw_comparison(expectation[index], unfolded_data[index],
-                                             x_axis_label=x_axis_label)
+                self.draw_data_expectation(unfolded_data[index], expectation[index])
 
     def draw_uncertainty_plot(self, channel, period):
         hist_path_postfix = self.unfolders[channel + period].hist_path_postfix

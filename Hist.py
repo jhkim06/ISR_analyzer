@@ -39,7 +39,7 @@ class Hist:
 
     def __init__(self, hist_name, root_hist, root_sys_hist_dict, file_group, multiple_hists=False):
 
-        self.multiple_hists = multiple_hists
+        self.multiple_hists = multiple_hists  # for example, all MC background
         self.hist_name = hist_name
         self.root_hist = root_hist
         self.root_sys_hist_dict = root_sys_hist_dict
@@ -76,6 +76,10 @@ class Hist:
 
         # text to show in plot
         self.text_for_plot = None
+
+    # TODO update
+    def copy_config(self, other):
+        self.text_for_plot = other.text_for_plot
 
     def set_hist_name(self, hist_name):
         self.hist_name = hist_name
@@ -320,7 +324,6 @@ class Hist:
         return new_hist
 
     def divide(self, other=None):
-
         if other is None:
             denominator = self
         else:
@@ -338,16 +341,22 @@ class Hist:
             for sys_name, variations in self.root_sys_hist_dict.items():
                 root_sys_hist_dict[sys_name] = dict()
                 for variation in variations:
-                    # root_sys_hist_dict[sys_name][variation] = \
-                    #    self.root_sys_hist_dict[sys_name][variation].Clone("clone")
                     root_sys_hist_dict[sys_name][variation] = self.hist(sys_name, variation)
                     root_sys_hist_dict[sys_name][variation].Divide(denominator_hist)
         else:
             root_sys_hist_dict = None
 
-        new_hist = Hist(self.hist_name, root_hist, root_sys_hist_dict, self.file_group)
+        new_hist_name = self.hist_name
+        if denominator.is_mc is True and self.is_mc is False:
+            new_hist_name = "Data/Pred."
+        if denominator.is_mc is False and self.is_mc is True:
+            new_hist_name = "Pred./Data"
+
+        # update name
+        new_hist = Hist(new_hist_name, root_hist, root_sys_hist_dict, self.file_group)
         new_hist.set_hist_config(False, self.axis_steering, False)  # set bin_width_norm False
         new_hist.is_mc = self.is_mc
+        new_hist.copy_config(self)  # FIXME update copy_config
         return new_hist
 
     def hist(self, sys_name="", sys_variation=""):

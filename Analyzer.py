@@ -59,7 +59,7 @@ class Analyzer:
         data_hist = self.hist_producer.get_data_hist()
         total_expectation_hist = self.hist_producer.get_total_expectation_hist()
 
-        self.plotter.draw_comparison(total_expectation_hist, data_hist, figsize=figsize)
+        self.plotter.make_comparison_plot(total_expectation_hist, data_hist, figsize=figsize)
 
     # def draw(denominator, *nominators)
     def draw_comparisons(self, denominator, nominator, hist_name, hist_type='data', show_mean_line=False):
@@ -85,5 +85,5 @@ class Analyzer:
             nominator_hist = nominator_producer.get_total_expectation_hist(exp_type=hist_type)
 
         # draw
-        self.plotter.draw_comparison(nominator_hist, denominator_hist, show_mean_line=show_mean_line,
-                                     ymin=0.8, ymax=1.2)
+        self.plotter.make_comparison_plot(nominator_hist, denominator_hist, show_mean_line=show_mean_line,
+                                          ymin=0.8, ymax=1.2)

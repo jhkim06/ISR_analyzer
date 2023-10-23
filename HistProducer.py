@@ -1,6 +1,7 @@
 import re
 
 
+# create Hist from input ROOT files
 class HistProducer:
 
     def __init__(self, experiment_file_pather, signal_dict=None, bg_dict=None):
@@ -74,7 +75,7 @@ class HistProducer:
                                                                  hist_path_postfix=self.hist_path_postfix)
         return signal_group.get_hist(name)
 
-    def get_data_hist(self, force_1d_output=False):
+    def get_data_hist(self, force_1d_output=False, bg_subtracted=False):
         # allow to return a list of histograms
         data = self.experiment_file_pather.make_data_group(self.period, self.channel,
                                                            file_path_postfix=self.file_path_postfix,
