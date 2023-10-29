@@ -54,7 +54,7 @@ class Hist:
         self.unfold_bin = dict()
 
         self.file_group = file_group
-        self.group_label = self.file_group.get_group_name
+        self.hist_label = self.file_group.get_group_name
 
         self.bin1 = None  #
         self.bin2 = None  #
@@ -72,7 +72,7 @@ class Hist:
 
         self.hist_dict = OrderedDict()
         if not self.multiple_hists:
-            self.hist_dict[self.group_label] = self
+            self.hist_dict[self.hist_label] = self
 
         # text to show in plot
         self.text_for_plot = None
@@ -80,6 +80,7 @@ class Hist:
     # TODO update
     def copy_config(self, other):
         self.text_for_plot = other.text_for_plot
+        self.is_mc = other.is_mc
 
     def set_hist_name(self, hist_name):
         self.hist_name = hist_name
@@ -89,12 +90,12 @@ class Hist:
 
     def update_group_label(self, new_group_label='', postfix=''):
         if postfix == '':
-            self.group_label = new_group_label
+            self.hist_label = new_group_label
         else:
             if new_group_label == '':
-                self.group_label += postfix
+                self.hist_label += postfix
             else:
-                self.group_label = new_group_label + postfix
+                self.hist_label = new_group_label + postfix
 
     def set_text_for_plot(self, text):
         self.text_for_plot = text
@@ -164,6 +165,7 @@ class Hist:
         return self.unfold_bin[bin_name]
 
     def get_root_hist(self, sys_name="", sys_variation=""):
+        # TODO sys_name = "bg_norm"
         if sys_name == "" and sys_variation == "":
             return self.root_hist
         else:
@@ -202,7 +204,7 @@ class Hist:
             out_hist = Hist("extracted_" + self.hist_name + "_" + axis1_name + "_" + str(index),
                             raw_hist, sys_raw_hist_dict, self.file_group)
             out_hist.is_mc = self.is_mc
-            out_hist.update_group_label(self.group_label)  #
+            out_hist.update_group_label(self.hist_label)  #
             out_hist.text_for_plot = self.text_for_plot
             if self.multiple_hists:
                 extracted_hist_dict = dict()
@@ -211,7 +213,7 @@ class Hist:
                     extracted_hist_dict[label] = Hist("extracted_" + axis1_name, temp_hist, temp_sys_hist_dict,
                                                       hist.file_group)
                     extracted_hist_dict[label].is_mc = hist.is_mc
-                    extracted_hist_dict[label].update_group_label(self.group_label)
+                    extracted_hist_dict[label].update_group_label(self.hist_label)
                     hist.set_axis_steering(self_axis_steering)
                 out_hist.multiple_hists = True
                 out_hist.hist_dict = extracted_hist_dict
@@ -235,27 +237,31 @@ class Hist:
                         raw_hist, sys_raw_hist_dict, self.file_group)
 
         out_hist.is_mc = self.is_mc
-        out_hist.update_group_label(self.group_label)  #
+        out_hist.update_group_label(self.hist_label)  #
         out_hist.text_for_plot = self.text_for_plot
         # TODO multiple hists?
 
         return out_hist
 
     # squared root sum for systematics
-    def __add__(self, other):
+    def __add__(self, other, c1=1):
 
         root_hist = self.root_hist.Clone("clone")
-        root_hist.Add(other.root_hist)
+        root_hist.Add(other.root_hist, c1)
 
         root_sys_hist_dict = self.__make_sys_hist_dict__(other)
 
         new_hist = Hist(self.hist_name, root_hist, root_sys_hist_dict, self.file_group, True)
         new_hist.set_hist_config(False, self.axis_steering, False)  # set bin_width_norm False
+        new_hist.copy_config(self)
 
         new_hist.hist_dict.update(other.hist_dict)
         new_hist.hist_dict.update(self.hist_dict)
 
         return new_hist
+
+    def __sub__(self, other):
+        return self.__add__(other, -1)
 
     def __loop_sys_dict__(self, output_dict, sys_names, sys_hist_dict, other):
 
@@ -355,7 +361,6 @@ class Hist:
         # update name
         new_hist = Hist(new_hist_name, root_hist, root_sys_hist_dict, self.file_group)
         new_hist.set_hist_config(False, self.axis_steering, False)  # set bin_width_norm False
-        new_hist.is_mc = self.is_mc
         new_hist.copy_config(self)  # FIXME update copy_config
         return new_hist
 

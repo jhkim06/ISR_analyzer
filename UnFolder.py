@@ -36,13 +36,13 @@ class UnFolder:
              }
         )
 
-        self.response_matrix = response_matrix  #
+        self.response_matrix = response_matrix
         # 2D unfolding use TUnfoldBinning
         self.folded_bin = None
         self.unfolded_bin = None
         self.tunfold_bin_used = False
         self.use_axis_binning = False
-        self.set_bins()  #
+        self.set_bins()
 
         # input hist
         self.input_hist = input_hist
@@ -136,7 +136,6 @@ class UnFolder:
             self.reg_reg_strength = 0
         else:
             return
-
         self.do_sys_unfolds()
         # self.bottom_line_test()
 
@@ -239,7 +238,7 @@ class UnFolder:
         print("---bottom_line_test---")
         print(f'{text} {chi2}')
 
-        if self.tunfold_bin_used:  # FIXME add condition for 2D
+        if self.tunfold_bin_used:
             data_hists = data_hist.get_1d_hists()
             mc_hists = mc_hist.get_1d_hists()
             # for each window

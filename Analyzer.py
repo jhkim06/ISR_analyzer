@@ -62,28 +62,35 @@ class Analyzer:
         self.plotter.make_comparison_plot(total_expectation_hist, data_hist, figsize=figsize)
 
     # def draw(denominator, *nominators)
-    def draw_comparisons(self, denominator, nominator, hist_name, hist_type='data', show_mean_line=False):
+    def draw_comparisons(self, denominator, nominator, hist_name_1, hist_name_2, hist_type='data'):
         # local HistProducer to get hist
         denominator_producer = HistProducer(self.file_pather, self.signal_dict, self.bg_dict)
-        denominator_producer.set_base_configs(denominator[0], denominator[1])
-        denominator_producer.set_configs(hist_name,
-                                         hist_path_postfix=denominator[2],
+        denominator_producer.set_base_configs(denominator[0], denominator[1], hist_path_postfix=denominator[2])
+        denominator_producer.set_configs(hist_name_1,
                                          bin_width_norm=True,
-                                         normalize=True)
+                                         normalize=False)
 
         nominator_producer = HistProducer(self.file_pather, self.signal_dict, self.bg_dict)
-        nominator_producer.set_base_configs(nominator[0], nominator[1])
-        nominator_producer.set_configs(hist_name,
-                                       hist_path_postfix=nominator[2],
+        nominator_producer.set_base_configs(nominator[0], nominator[1], hist_path_postfix=nominator[2])
+        nominator_producer.set_configs(hist_name_2,
                                        bin_width_norm=True,
-                                       normalize=True)
+                                       normalize=False)
         if hist_type == 'data':
             denominator_hist = denominator_producer.get_data_hist()
             nominator_hist = nominator_producer.get_data_hist()
         elif hist_type == 'signal':
-            denominator_hist = denominator_producer.get_total_expectation_hist(exp_type=hist_type)
-            nominator_hist = nominator_producer.get_total_expectation_hist(exp_type=hist_type)
+            denominator_hist = denominator_producer.get_total_expectation_hist(mc_type=hist_type)
+            nominator_hist = nominator_producer.get_total_expectation_hist(mc_type=hist_type)
 
-        # draw
-        self.plotter.make_comparison_plot(nominator_hist, denominator_hist, show_mean_line=show_mean_line,
-                                          ymin=0.8, ymax=1.2)
+        self.plotter.add_hist(nominator_hist, color='black', xerr=True, histtype='errorbar')
+        self.plotter.add_hist(denominator_hist, is_denominator=True)
+        self.draw_comparison()
+
+    def draw_comparison(self, x_axis_label=''):
+
+        self.plotter.create_subplots(1, 1, figsize=(10, 10))
+        self.plotter.set_current_axis(0, 0)
+        self.plotter.draw_ratio()
+        self.plotter.set_y_axis_config(set_min=0.0, set_max=1.05)
+        self.plotter.get_axis(0, 0).set_xlabel(x_axis_label, fontsize=30)
+        self.plotter.save_fig()

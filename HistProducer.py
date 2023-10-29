@@ -75,22 +75,29 @@ class HistProducer:
                                                                  hist_path_postfix=self.hist_path_postfix)
         return signal_group.get_hist(name)
 
-    def get_data_hist(self, force_1d_output=False, bg_subtracted=False):
+    def get_data_hist(self, force_1d_output=False, bg_subtraction=False):
         # allow to return a list of histograms
         data = self.experiment_file_pather.make_data_group(self.period, self.channel,
                                                            file_path_postfix=self.file_path_postfix,
                                                            hist_path_postfix=self.hist_path_postfix)
+        if bg_subtraction:
+            bg = self.get_total_expectation_hist(mc_type='bg')
+
         if self.second_axis_postfix is None:
             data_hist = data.get_hist(self.hist_name)
             data_hist.set_hist_config(self.bin_width_norm, self.axis_steering, self.normalize)
+            if bg_subtraction:
+                data_hist = data_hist - bg
             if force_1d_output:
                 return data_hist.get_1d_hists()
             else:
                 return data_hist
         else:
             data_hists = []
-            for postfix in self.second_axis_postfix:
+            for index, postfix in enumerate(self.second_axis_postfix):
                 data_hist = data.get_hist(self.hist_name + postfix)
+                if bg_subtraction:
+                    data_hist = data_hist - bg[index]
                 data_hist.set_hist_config(self.bin_width_norm, self.axis_steering, self.normalize)
                 data_hists.append(data_hist)
                 if self.set_text_for_plot:
@@ -128,17 +135,17 @@ class HistProducer:
             if total_expectation_hist is None:
                 total_expectation_hist = hist
             else:
-                total_expectation_hist += hist
+                total_expectation_hist += hist  # Add
         total_expectation_hist.set_hist_config(self.bin_width_norm, self.axis_steering, self.normalize)
         return total_expectation_hist
 
-    def get_total_expectation_hist(self, exp_type='total', force_1d_output=False):
+    def get_total_expectation_hist(self, mc_type='total', force_1d_output=False):
 
-        if exp_type == "total":
+        if mc_type == "total":
             expectation_dict = self.expectation_dict
-        elif exp_type == "signal":
+        elif mc_type == "signal" and self.signal_dict:
             expectation_dict = self.signal_dict
-        elif exp_type == 'bg':
+        elif mc_type == 'bg' and self.bg_dict:
             expectation_dict = self.bg_dict
         else:
             return
