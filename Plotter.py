@@ -66,9 +66,8 @@ class Plotter:
 
         self.fig = None
         self.axs = None
-
         self.current_axis = None
-        # TODO make a class for a HistToDraw
+
         self.hists = []
         self.hist_kwargs = []
         self.hist_draw_option = []
@@ -90,9 +89,12 @@ class Plotter:
         self.fig = None
         self.axs = None
         self.current_axis = None
+
         self.hists.clear()
         self.hist_kwargs.clear()
         self.hist_draw_option.clear()
+        self.denominator_index = -1
+
         self.text = ''
         self.text_written = False
         self.use_x_axis_tick_labels_from_hist = False

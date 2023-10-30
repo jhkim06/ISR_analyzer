@@ -36,7 +36,7 @@ class UnFolder:
              }
         )
 
-        self.response_matrix = response_matrix
+        self.response_matrix = response_matrix  # TODO check the effect of the first bin
         # 2D unfolding use TUnfoldBinning
         self.folded_bin = None
         self.unfolded_bin = None
@@ -256,13 +256,13 @@ class UnFolder:
         self.get_chi_square()
 
     # get expectation histogram
-    def get_expectation_hist(self, unfolded=True, use_matrix=False):
+    def get_expectation_hist(self, unfolded=True, use_matrix=False, first_bin=0):
         if use_matrix:  # projection of response matrix
             if unfolded:
-                unfolded_hist = self.get_projected_hist(axis='x')
+                unfolded_hist = self.get_projected_hist(axis='x', first_bin=first_bin)
                 return unfolded_hist
             else:
-                folded_hist = self.get_projected_hist(axis='y')
+                folded_hist = self.get_projected_hist(axis='y', first_bin=first_bin)
                 return folded_hist
         else:  # get histogram from the root file
             if unfolded:

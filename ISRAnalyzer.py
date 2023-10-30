@@ -1,6 +1,7 @@
 from UnFolder import UnFolder
 from Analyzer import Analyzer
 from ISRHists import ISRHists
+from collections import namedtuple
 import re
 
 
@@ -72,9 +73,10 @@ class ISRAnalyzer(Analyzer):
         self.mass_unfolders = []
         self.pt_unfolders = []
 
-        # ISR results
+        # results
         # self.data_isr_hists = None
         # self.data_bg_subtracted__isr_hists
+        # levels: folded, unfolded, full_phase
         self.folded_isr_hists = None  # DY fake subtracted
         self.unfolded_isr_hists = None
         self.full_phase_isr_hists = None
@@ -216,11 +218,13 @@ class ISRAnalyzer(Analyzer):
         self.full_phase_isr_hists = ISRHists(full_phase_mass_data_hist[0], *full_phase_pt_data_hist,
                                              mass_windows=self.mass_edges)
 
-    def make_mc_isr_hists(self, unfolded=False, use_matrix=True):
-        mass_mc_hist = self.mass_unfolders[0].get_expectation_hist(unfolded=unfolded, use_matrix=use_matrix)
+    def make_mc_isr_hists(self, unfolded=False, use_matrix=True, first_bin=0):
+        mass_mc_hist = self.mass_unfolders[0].get_expectation_hist(unfolded=unfolded, use_matrix=use_matrix,
+                                                                   first_bin=first_bin)
         pt_mc_hists = []
         for i in range(len(self.pt_unfolders)):
-            pt_mc_hists.append(self.pt_unfolders[i].get_expectation_hist(unfolded=unfolded, use_matrix=use_matrix))
+            pt_mc_hists.append(self.pt_unfolders[i].get_expectation_hist(unfolded=unfolded, use_matrix=use_matrix,
+                                                                         first_bin=first_bin))
         out_isr_hists = ISRHists(mass_mc_hist, *pt_mc_hists,
                                  mass_windows=self.mass_edges)
         return out_isr_hists
@@ -239,7 +243,7 @@ class ISRAnalyzer(Analyzer):
                                  mass_windows=self.mass_edges)
         return out_isr_hists
 
-    def get_isr_hists(self, level_name='folded'):
+    def get_data_isr_hists(self, level_name='folded'):
         if level_name == 'folded':
             return self.get_folded_isr_hists()
         elif level_name == 'unfolded':
@@ -250,11 +254,11 @@ class ISRAnalyzer(Analyzer):
             print('check ' + level_name)
             return
 
-    def get_mc_isr_hists(self, level_name='folded'):
+    def get_mc_isr_hists(self, level_name='folded', first_bin=0):
         if level_name == 'folded':
-            return self.make_mc_isr_hists(unfolded=False)
+            return self.make_mc_isr_hists(unfolded=False, first_bin=first_bin)
         elif level_name == 'unfolded':
-            return self.make_mc_isr_hists(unfolded=True)
+            return self.make_mc_isr_hists(unfolded=True, first_bin=first_bin)
         elif level_name == 'efficiency':
             return self.get_mc_gen_isr_hists(False)
         elif level_name == 'full_phase':
@@ -295,7 +299,7 @@ class ISRAnalyzer(Analyzer):
     def draw_unfolded_plots(self, bin_width_norm=True, draw_mass=True):
 
         mc_isr_hist = self.get_mc_isr_hists('unfolded')
-        data_isr_hist = self.get_isr_hists('unfolded')
+        data_isr_hist = self.get_data_isr_hists('unfolded')
 
         if draw_mass:
             unfolded_data = data_isr_hist.get_mass_hist(bin_width_norm)
@@ -317,58 +321,69 @@ class ISRAnalyzer(Analyzer):
                 self.plotter.add_hist(expectation[index], is_denominator=True)
                 self.draw_data_expectation(x_axis_label)
 
-    def draw_acceptance_or_efficiency_plots(self, draw_mass=True, level='full_phase'):
-        unfolded_isr_hist = self.get_mc_isr_hists('unfolded')
-        full_phase_isr_hist = self.get_mc_isr_hists(level)
-
-        if level == "full_phase":
+    def draw_acceptance_or_efficiency_plots(self, draw_mass=True, hist_type='full_phase'):
+        # event acc x eff: reco & gen / gen
+        # event eff: reco & gen / gen with acceptance cut
+        # SF: reco & gen with SF applied/ reco & gen without SF
+        if hist_type == "acc_eff":
+            nominator_isr_hist = self.get_mc_isr_hists('unfolded')
+            denominator_isr_hist = self.get_mc_isr_hists('full_phase')
             y_axis_label = r"Acc.$\times$ Eff."
             out_name = 'acceptance_efficiency'
-        else:
+        elif hist_type == "eff":
+            nominator_isr_hist = self.get_mc_isr_hists('unfolded')
+            denominator_isr_hist = self.get_mc_isr_hists('efficiency')
             y_axis_label = "Eff."
             out_name = 'efficiency'
+        else:
+            nominator_isr_hist = self.get_mc_isr_hists('unfolded', first_bin=1)
+            denominator_isr_hist = self.get_mc_isr_hists('unfolded')
+            y_axis_label = "SF"
+            out_name = 'SF'
 
         if draw_mass:
-            unfolded = unfolded_isr_hist.get_mass_hist()
-            full_phase = full_phase_isr_hist.get_mass_hist()
+            nominator = nominator_isr_hist.get_mass_hist()
+            denominator = denominator_isr_hist.get_mass_hist()
 
-            hist = unfolded.divide(full_phase)
+            hist = nominator.divide(denominator)
             x_axis_label = make_axis_label(self.channel)
 
             self.plotter.add_hist(hist, color='black', xerr=True, histtype='errorbar')
             self.draw(y_axis_label, x_axis_label, out_name)
         else:
-            unfolded = unfolded_isr_hist.get_pt_hist(-1)
-            full_phase = full_phase_isr_hist.get_pt_hist(-1)
+            nominator = nominator_isr_hist.get_pt_hist(-1)
+            denominator = denominator_isr_hist.get_pt_hist(-1)
 
             x_axis_label = make_axis_label(self.channel)
-            for index in range(len(unfolded)):
-                hist = unfolded[index].divide(full_phase[index])
+            for index in range(len(nominator)):
+                hist = nominator[index].divide(denominator[index])
 
                 self.plotter.add_hist(hist, color='black', xerr=True, histtype='errorbar')
                 self.draw(y_axis_label, x_axis_label, out_name)
 
-    def draw_isr_plots(self, level_name, binned_mean=True, show_mc=False):
-
+    def draw_isr_plots(self, *hist_info, ymin=14, ymax=30):
+        # (hist_type, leve_name, binned_mean, label, kwargs)
         # get isr_hists
-        isr_hists = self.get_isr_hists(level_name)
-        data_mass_df, data_pt_df = isr_hists.get_isr_dataframe(binned_mean=binned_mean)
-        label = level_name + ' Data (' + self.channel + ')'
-        self.plotter.draw_isr_data_frame(data_mass_df, data_pt_df,
-                                         ymin=14, ymax=30,
-                                         new_fig=True,
-                                         color='black', label=label)
-        if show_mc:
-            isr_hists = self.get_mc_isr_hists(level_name)
-            data_mass_df, data_pt_df = isr_hists.get_isr_dataframe(binned_mean=binned_mean)
-            label = level_name + ' MC'
-            self.plotter.draw_isr_data_frame(data_mass_df, data_pt_df,
-                                             ymin=14, ymax=30,
-                                             new_fig=False,
-                                             color='gray', label=label)
+        HistInfo = namedtuple('HistInfo',
+                              ['hist_type', 'level_name', 'binned_mean', 'label', 'kwargs'])
+        first_plot = True
+        for info in hist_info:
+            info = HistInfo(info[0], info[1], info[2], info[3], info[4])
+            if info.hist_type == "data":
+                isr_hists = self.get_data_isr_hists(info.level_name)
+            else:
+                isr_hists = self.get_mc_isr_hists(info.level_name)
+
+            mass_df, pt_df = isr_hists.get_isr_dataframe(binned_mean=info.binned_mean)
+            label = info.label
+            self.plotter.draw_isr_data_frame(mass_df, pt_df,
+                                             ymin=ymin, ymax=ymax,
+                                             new_fig=first_plot,
+                                             label=label, **info.kwargs)
+            first_plot = False
 
     def draw_uncertainty_plot(self, level="full_phase"):
-        isr_hists = self.get_isr_hists(level)
+        isr_hists = self.get_data_isr_hists(level)
         mass_df, pt_df = isr_hists.get_isr_dataframe()
         self.plotter.draw_isr_error_df(pt_df)
 

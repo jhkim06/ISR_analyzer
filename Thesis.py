@@ -1,5 +1,7 @@
 from FilePather import FilePather
 from ISRAnalyzer import ISRAnalyzer
+from collections import namedtuple
+from Plotter import Plotter
 
 
 def make_axis_label(channel, is_mass=True):
@@ -39,6 +41,7 @@ class Thesis:
                          "top": ["top"]}
         else:
             return
+
         analyzer = ISRAnalyzer(cms, signal_groups, bg_groups,
                                channel, period, pt_hist_name, mass_hist_name,
                                pt_matrix_name, mass_matrix_name,
@@ -49,5 +52,25 @@ class Thesis:
         self.analyzers[experiment_name + "_" + channel + period +
                        "_" + file_path_postfix + hist_path_postfix] = analyzer
 
-    def draw_isr_plot_comparisons(self):
-        pass
+    def draw_isr_plots(self, *hist_info, ymin=14, ymax=30):
+
+        HistInfo = namedtuple('HistInfo',
+                              ['name', 'hist_type', 'level_name', 'binned_mean', 'label', 'kwargs'])
+        # FIXME properly set plot path
+        plotter = Plotter('CMS', './plots/CMS')
+
+        first_plot = True
+        for info in hist_info:
+            info = HistInfo(info[0], info[1], info[2], info[3], info[4], info[5])
+            if info.hist_type == "data":
+                isr_hists = self.analyzers[info.name].get_data_isr_hists(info.level_name)
+            else:
+                isr_hists = self.analyzers[info.name].get_mc_isr_hists(info.level_name)
+
+            mass_df, pt_df = isr_hists.get_isr_dataframe(binned_mean=info.binned_mean)
+            label = info.label
+            plotter.draw_isr_data_frame(mass_df, pt_df,
+                                        ymin=ymin, ymax=ymax,
+                                        new_fig=first_plot,
+                                        label=label, **info.kwargs)
+            first_plot = False
