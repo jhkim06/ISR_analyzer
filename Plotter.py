@@ -6,7 +6,6 @@ from matplotlib.patches import Rectangle
 import numpy as np
 from matplotlib.offsetbox import AnchoredText
 import os
-import matplotlib as mpl
 
 
 def adjust_x_lim(axis, bins):
@@ -16,6 +15,17 @@ def adjust_x_lim(axis, bins):
             axis.set_xlim(0.2, bins[-1])
         else:
             axis.set_xlim(bins[0], bins[-1])
+
+            minor_x_ticks = FixedLocator([50, 60, 70, 80, 90, 200, 300, 400, 500, 600, 700, 800, 900])
+            minor_x_ticklabels = ['50', '60', '70', '', '90', '200', '', '', '', '', '', '', '']
+            axis.xaxis.set_minor_locator(minor_x_ticks)
+            axis.xaxis.set_minor_formatter(FixedFormatter(minor_x_ticklabels))
+
+            major_x_ticks = FixedLocator([100, 1000])
+            major_x_ticklabels = ['', '1000']
+            axis.xaxis.set_major_locator(major_x_ticks)
+            axis.xaxis.set_major_formatter(FixedFormatter(major_x_ticklabels))
+            axis.tick_params(axis='x', which='both', labelsize=30)
     else:
         axis.set_xlim(bins[0], bins[-1])
 
@@ -46,8 +56,8 @@ def make_error_boxes(default_value, bins, errors):  # TODO add options for hatch
 class Plotter:
     def __init__(self, experiment, base_output_dir, **kwargs):
 
-        mpl.rcParams['axes.prop_cycle'] = mpl.cycler(color=["royalblue", "cornflowerblue", "turquoise",
-                                                            'tomato', "salmon"])
+        # mpl.rcParams['axes.prop_cycle'] = mpl.cycler(color=["royalblue", "cornflowerblue", "turquoise",
+        #                                                     'tomato', "salmon"])
         self.experiment = experiment
         self.period = ''
         self.channel = ''
@@ -55,7 +65,7 @@ class Plotter:
         plt.ioff()  # interactive mode off; not to show figures on creation
         plt.rcParams.update({
             "text.usetex": True,
-            "font.family": "Computer Modern Roman",
+            # "font.family": "Computer Modern Roman",
             'text.latex.preamble': r'\usepackage{newtxmath}'
         })
         plt.rcParams['axes.linewidth'] = 2.0
@@ -74,6 +84,7 @@ class Plotter:
         self.denominator_index = -1
 
         self.text = ''
+        self.use_text_as_label = False
         self.text_written = False
         self.use_x_axis_tick_labels_from_hist = False
 
@@ -96,6 +107,7 @@ class Plotter:
         self.denominator_index = -1
 
         self.text = ''
+        self.use_text_as_label = False
         self.text_written = False
         self.use_x_axis_tick_labels_from_hist = False
 
@@ -109,9 +121,12 @@ class Plotter:
         if not os.path.exists(self.out_dir):
             os.makedirs(self.out_dir)
 
-    def set_text(self, raw_hist):
+    def set_text(self, raw_hist=None, text=None):
         # TODO allow another text
-        self.text = raw_hist.get_text_for_plot()
+        if raw_hist:
+            self.text = raw_hist.get_text_for_plot()
+        if text:
+            self.text = text
 
     def create_subplots(self, rows=1, cols=1, figsize=(8, 8), **gridspec_kw):
         if rows != self.rows:
@@ -195,46 +210,100 @@ class Plotter:
             if hist.multiple_hists and self.hist_draw_option[index]:
                 self.draw_stack(hist, use_mplhep=False)
             else:
-                self.draw_hist(hist, **self.hist_kwargs[index])
+                artist = self.draw_hist(hist, **self.hist_kwargs[index])
+                if "histtype" in self.hist_kwargs[index]:
+                    if self.hist_kwargs[index]["histtype"] == "step":
+                        ec = artist[0][0].get_edgecolor()
+                        self.hist_kwargs[index]['color'] = ec
 
-            # FIXME make a method to set a output file name
+                    elif self.hist_kwargs[index]["histtype"] == "errorbar":
+                        mec = artist[0][0][0].get_markeredgecolor()
+                        self.hist_kwargs[index]["mec"] = mec
+                        mfc = artist[0][0][0].get_markerfacecolor()
+                        self.hist_kwargs[index]["mfc"] = mfc
+
+                    else:  # self.hist_kwargs[index]["histtype"] == "fill":
+                        ec = artist[0][0].get_edgecolor()
+                        self.hist_kwargs[index]["ec"] = ec
+                        fc = artist[0][0].get_facecolor()
+                        self.hist_kwargs[index]["fc"] = fc
+                else:
+                    ec = artist[0][0].get_edgecolor()
+                    self.hist_kwargs[index]["ec"] = ec
+
             if index == 0:
                 self.set_y_axis_label(hist)
                 self.set_x_axis_label(hist)
 
-    def draw_ratio(self):
+    def draw_ratio(self, y_axis_label=None):
         denominator_hist = self.hists[self.denominator_index]
         is_first = True
+        denominator_colr = 'black'
         for index, hist in enumerate(self.hists):
             if index == self.denominator_index:
+                if 'color' in self.hist_kwargs[index]:
+                    denominator_colr = self.hist_kwargs[index]['color']
+                elif "mec" in self.hist_kwargs[index]:
+                    denominator_colr = self.hist_kwargs[index]['mec']
+                elif "mfc" in self.hist_kwargs[index]:
+                    denominator_colr = self.hist_kwargs[index]['mfc']
+                elif "ec" in self.hist_kwargs[index]:
+                    denominator_colr = self.hist_kwargs[index]['ec']
+                elif "fc" in self.hist_kwargs[index]:
+                    denominator_colr = self.hist_kwargs[index]['fc']
+                else:
+                    pass
                 continue
             ratio = hist.divide(denominator_hist)
             self.draw_hist(ratio, **self.hist_kwargs[index])
             if is_first:
-                self.set_y_axis_label(ratio, ratio.hist_name)
+                label = ratio.hist_name
+                if y_axis_label:
+                    label = y_axis_label
+                self.set_y_axis_label(ratio, label)
                 is_first = False
-        self.current_axis.axhline(y=1, color='red', linestyle='--')
+        self.current_axis.axhline(y=1, color=denominator_colr, linestyle='--', linewidth=1)
 
     def set_experiment_label(self, label="Preliminary"):
         self.current_axis.draw(self.current_axis.figure.canvas.get_renderer())
-        # hep.cms.label(r"\fontfamily{cmss}\selectfont\textit " + label, data=True, year=self.period,
-        # ax=self.current_axis, italic=(True, True), exp_weight='bold', loc=0, pad=.0)
+
         plt.rcParams['text.usetex'] = False
-        hep.cms.label(label, data=True, year=self.period, ax=self.current_axis, exp_weight='bold', loc=0, pad=.0)
+        hep.cms.label(label, data=True, year=self.period, ax=self.current_axis, loc=0, pad=.0)
         plt.rcParams['text.usetex'] = True
 
-    def set_axis_config(self, do_mpl_magic=True, set_legend=True):
+    def set_axis_config(self, do_mpl_magic=True, set_legend=True, legend_loc='best', sort_legend=True):
         if set_legend:
-            hep.plot.hist_legend(self.current_axis, loc='best')
+            # check n hist
+            if len(self.hists) > 10:
+                ncol = 2
+                fontsize = 20
+            else:
+                ncol = 1
+                fontsize = 25
+            hep.plot.hist_legend(self.current_axis, loc=legend_loc,
+                                 ncol=ncol, fontsize=fontsize)
+            if sort_legend:
+                handles, labels = self.current_axis.get_legend_handles_labels()
+                hep.plot.sort_legend(ax=self.current_axis, order=labels[::-1])
+
         if do_mpl_magic:
-            hep.plot.mpl_magic(ax=self.current_axis)
+            hep.plot.yscale_legend(self.current_axis)
+            if self.text_written:
+                # hep.plot.yscale_text(self.current_axis)
+                hep.plot.mpl_magic(self.current_axis)
 
     def set_y_axis_config(self, label=None, log_scale=False,
                           remove_first_tick_label=False,
                           set_min=None, set_max=None,
                           set_grid=False):
+        self.current_axis.tick_params(axis='y', labelsize=30)
         if label:
             self.set_y_axis_label(label=label)
+
+        if log_scale:
+            self.current_axis.set_yscale("log")
+        else:
+            self.current_axis.ticklabel_format(style='sci', axis='y', scilimits=(0, 4))
 
         if set_min is not None:
             self.current_axis.set_ylim(ymin=set_min)
@@ -242,28 +311,31 @@ class Plotter:
         if set_max is not None:
             self.current_axis.set_ylim(ymax=set_max)
 
-        if log_scale:
-            self.current_axis.set_yscale("log")
-        else:
-            self.current_axis.ticklabel_format(style='sci', axis='y', scilimits=(0, 4))
-
         if remove_first_tick_label:
             self.current_axis.yaxis.get_major_ticks()[0].set_visible(False)
 
         if set_grid:
             self.current_axis.grid(axis='y', which='both')
 
-    def set_x_axis_config(self, remove_tick_labels=False, set_grid=False, label=None):
+    def set_x_axis_config(self, remove_tick_labels=False, set_grid=False, label=None, log_scale=False):
 
+        self.current_axis.tick_params(axis='x', which='both', labelsize=30)
         if label:
             self.set_x_axis_label(label=label)
 
         if remove_tick_labels:
-            self.current_axis.set_xticklabels([])
+            self.current_axis.set_xticklabels([])  # delete major labels
+            self.current_axis.set_xticklabels([], minor=True)  # delete minor labels
             self.set_x_axis_label(label="")
 
         if set_grid:
             self.current_axis.grid(axis='x', which='both')
+
+        if log_scale:
+            x_min, x_max = self.current_axis.get_xlim()
+            if x_min == 0:
+                self.current_axis.set_xlim(0.2, x_max)
+            self.current_axis.set_xscale("log")
 
     # FIXME move this method to Hist
     def get_x_bins(self, hist):
@@ -279,6 +351,12 @@ class Plotter:
         bins = self.get_x_bins(hist)
 
         label = raw_hist.hist_label
+        if self.use_text_as_label:
+            label = raw_hist.get_text_for_plot()
+        else:
+            if self.text == "":  # update only when self.text is not set
+                self.set_text(raw_hist=raw_hist)
+
         if 'label' in kwargs:
             label = kwargs['label']
             kwargs.pop('label')
@@ -286,9 +364,7 @@ class Plotter:
         artist = hep.histplot((hist.values, bins), ax=self.current_axis, yerr=hist.errors,
                               label=label, **kwargs)
         self.x_axis_tick_labels(hist, bins)
-        self.set_text(raw_hist)
 
-        # self.write_text()
         if self.text != '' and not self.text_written:
             at = AnchoredText(self.text, loc='upper left', prop=dict(size=20), frameon=False)
             at.patch.set_boxstyle("round, pad=0., rounding_size=0.2")
@@ -341,7 +417,7 @@ class Plotter:
             self.rows = 1
             self.cols = 1
 
-            self.fig, self.axs = plt.subplots(self.rows, self.cols, figsize=(10, 8))
+            self.fig, self.axs = plt.subplots(self.rows, self.cols, figsize=(11, 8))
             self.set_current_axis(0, 0)
             plt.subplots_adjust(left=0.15, right=0.95, bottom=0.15, top=0.9, hspace=0.05)
             self.set_isr_plot_cosmetics(ymin, ymax, xmin, xmax)
@@ -352,7 +428,7 @@ class Plotter:
         self.set_experiment_label(label="Preliminary")
         self.current_axis.errorbar(dimass_df[stat_type], dipt_df[stat_type],
                                    xerr=dimass_df[error_name], yerr=dipt_df[error_name],
-                                   marker='o', **kwargs)
+                                   **kwargs)
         hep.plot.hist_legend(self.current_axis, loc='best')
 
         final_plot_name = self.out_dir + "isr_result"

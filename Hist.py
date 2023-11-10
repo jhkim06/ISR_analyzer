@@ -164,21 +164,24 @@ class Hist:
     def get_unfold_bin(self, bin_name):
         return self.unfold_bin[bin_name]
 
-    def get_root_hist(self, sys_name="", sys_variation=""):
+    def get_root_hist(self, sys_name="", sys_variation="", scale=1.0):
         # TODO sys_name = "bg_norm"
         if sys_name == "" and sys_variation == "":
-            return self.root_hist
+            root_hist = self.root_hist
         else:
             if self.root_sys_hist_dict is not None:
                 if sys_name in self.root_sys_hist_dict:
                     if sys_variation in self.root_sys_hist_dict[sys_name]:
-                        return self.root_sys_hist_dict[sys_name][sys_variation]
+                        root_hist = self.root_sys_hist_dict[sys_name][sys_variation]
                     else:
-                        return self.root_hist
+                        root_hist = self.root_hist
                 else:
-                    return self.root_hist
+                    root_hist = self.root_hist
             else:
-                return self.root_hist
+                root_hist = self.root_hist
+        if scale != 1.0:
+            root_hist.Scale(scale)
+        return root_hist
 
     def get_sqrt_sys_hist(self):
         pass
@@ -375,10 +378,11 @@ class Hist:
             hist = self.unfold_bin[self.bin1].ExtractHistogram("extracted",
                                                                hist, 0, True, self.axis_steering)
         if self.bin_width_norm:
-            if self.normalize:
-                hist.Scale(1/hist.Integral(), "width")
-            else:
-                hist.Scale(1, "width")
+            hist.Scale(1, "width")
+
+        if self.normalize:
+            # hist.Scale(1 / hist.Integral(), "width")
+            hist.Scale(1 / hist.Integral())
         return hist
 
     def projected_hist(self, sys_name="", sys_variation="",

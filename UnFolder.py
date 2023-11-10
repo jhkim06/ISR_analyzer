@@ -13,7 +13,8 @@ State = namedtuple('State', ['RegMode', 'DensityMode', 'EConstraint'])
 
 class UnFolder:
     def __init__(self, response_matrix, input_hist, bg_hists=None,
-                 reg_mode="None", ex_constraint="Area", density_mode="None"):
+                 reg_mode="None", ex_constraint="Area", density_mode="None",
+                 bg_norm=False, iterative=False):
         self.reg_mode = MappingProxyType(
             {"None": ROOT.TUnfold.kRegModeNone,
              "Size": ROOT.TUnfold.kRegModeSize,
@@ -48,6 +49,12 @@ class UnFolder:
         self.input_hist = input_hist
         # background hists
         self.bg_hists = bg_hists
+        self.bg_norm = bg_norm
+
+        self.reg_reg_strength = 0
+        self.do_iterative = iterative
+        if self.do_iterative:
+            self.reg_reg_strength = 4
 
         self.default_tunfold_density = self.create_tunfold_density(reg_mode, ex_constraint, density_mode)
         self.set_input(self.default_tunfold_density)  # set input histogram, and subtract backgrounds
@@ -55,8 +62,6 @@ class UnFolder:
         self.sys_tunfold_density = dict()
         self.has_systematic = False
         self.set_systematics(reg_mode, ex_constraint, density_mode)
-
-        self.reg_reg_strength = 0
 
     def get_projected_hist(self, axis='x', first_bin=0, last_bin=-1, option='e'):
         return self.response_matrix.get_projected_hist(axis, first_bin, last_bin, option)
@@ -96,19 +101,28 @@ class UnFolder:
                                sys_name="", sys_variation=""):
 
         if self.tunfold_bin_used:
-            tunfold_density = ROOT.TUnfoldDensity(self.response_matrix.get_root_hist(sys_name, sys_variation),
-                                                  ROOT.TUnfold.kHistMapOutputHoriz,
-                                                  self.reg_mode[reg_mode],
-                                                  self.ex_constraint[ex_constraint],
-                                                  self.density_mode[density_mode],
-                                                  self.unfolded_bin, self.folded_bin)
+            if self.do_iterative:
+                tunfold_density = ROOT.TUnfoldIterativeEM(self.response_matrix.get_root_hist(sys_name, sys_variation),
+                                                          ROOT.TUnfold.kHistMapOutputHoriz,
+                                                          self.unfolded_bin, self.folded_bin)
+            else:
+                tunfold_density = ROOT.TUnfoldDensity(self.response_matrix.get_root_hist(sys_name, sys_variation),
+                                                      ROOT.TUnfold.kHistMapOutputHoriz,
+                                                      self.reg_mode[reg_mode],
+                                                      self.ex_constraint[ex_constraint],
+                                                      self.density_mode[density_mode],
+                                                      self.unfolded_bin, self.folded_bin)
         else:
             # print("use 1D hists...")
-            tunfold_density = ROOT.TUnfoldDensity(self.response_matrix.get_root_hist(sys_name, sys_variation),
-                                                  ROOT.TUnfold.kHistMapOutputHoriz,
-                                                  self.reg_mode[reg_mode],
-                                                  self.ex_constraint[ex_constraint],
-                                                  self.density_mode[density_mode])
+            if self.do_iterative:
+                tunfold_density = ROOT.TUnfoldIterativeEM(self.response_matrix.get_root_hist(sys_name, sys_variation),
+                                                          ROOT.TUnfold.kHistMapOutputHoriz)
+            else:
+                tunfold_density = ROOT.TUnfoldDensity(self.response_matrix.get_root_hist(sys_name, sys_variation),
+                                                      ROOT.TUnfold.kHistMapOutputHoriz,
+                                                      self.reg_mode[reg_mode],
+                                                      self.ex_constraint[ex_constraint],
+                                                      self.density_mode[density_mode])
 
         return tunfold_density
 
@@ -121,12 +135,16 @@ class UnFolder:
 
         if self.bg_hists is not None:
             for label, hist in self.bg_hists.hist_dict.items():
-                tunfold_density.SubtractBackground(hist.get_root_hist(sys_name, sys_variation), label)
+                scale = 1.0
+                if self.bg_norm:
+                    if label == r"${t}\bar{t}$" or label == "top":
+                        scale = 1.2
+                bg_hist = hist.get_root_hist(sys_name, sys_variation, scale)
+                tunfold_density.SubtractBackground(bg_hist, label)
 
     def do_unfold(self, unfold_method=""):
         # TODO record unfold state and use the same state for systematic unfolding
         if unfold_method == "":  # chi-square minimization
-            self.reg_reg_strength = 0
             self.default_tunfold_density.DoUnfold(self.reg_reg_strength)
         elif unfold_method == "scan_tau":
             self.reg_reg_strength = 0  # TODO update strength and save it

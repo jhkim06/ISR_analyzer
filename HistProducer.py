@@ -110,48 +110,60 @@ class HistProducer:
                     data_hist.set_text_for_plot(text)
             return data_hists
 
-    def make_expectation_hist(self, expectation_dict, second_axis_postfix=""):
+    def get_hist_from_group(self, file_list, group_name, second_axis_postfix=""):
+
+        group_name_split = group_name.split(":")
+        if len(group_name_split) == 2:
+            group_name = group_name_split[0]
+            hist_prefix = group_name_split[1]
+        elif len(group_name_split) == 1:
+            group_name = group_name_split[0]
+            hist_prefix = ""
+        else:
+            # somthing wrong
+            return
+        group = self.experiment_file_pather.make_mc_group(self.period, self.channel, *file_list,
+                                                          group_name=group_name, hist_prefix=hist_prefix,
+                                                          file_path_postfix=self.file_path_postfix,
+                                                          hist_path_postfix=self.hist_path_postfix)
+
+        return group.get_hist(self.hist_name + second_axis_postfix)
+
+    def make_expectation_hist(self, expectation_dict, target_group=None, second_axis_postfix=""):
 
         total_expectation_hist = None
-        for group_name, files in expectation_dict.items():
-            # check if hist_prefix needed
-            group_name_split = group_name.split(":")
-            if len(group_name_split) == 2:
-                group_name = group_name_split[0]
-                hist_prefix = group_name_split[1]
-            elif len(group_name_split) == 1:
-                group_name = group_name_split[0]
-                hist_prefix = ""
-            else:
-                # somthing wrong
-                return
-            group = self.experiment_file_pather.make_mc_group(self.period, self.channel, *files,
-                                                              group_name=group_name, hist_prefix=hist_prefix,
-                                                              file_path_postfix=self.file_path_postfix,
-                                                              hist_path_postfix=self.hist_path_postfix)
-            hist = group.get_hist(self.hist_name + second_axis_postfix)
-            hist.set_hist_config(self.bin_width_norm, self.axis_steering, self.normalize)
+        if target_group is None:
+            for group_name, files in expectation_dict.items():
+                # check if hist_prefix needed\
+                hist = self.get_hist_from_group(files, group_name, second_axis_postfix)
+                hist.set_hist_config(self.bin_width_norm, self.axis_steering, self.normalize)
 
-            if total_expectation_hist is None:
-                total_expectation_hist = hist
-            else:
-                total_expectation_hist += hist  # Add
+                if total_expectation_hist is None:
+                    total_expectation_hist = hist
+                else:
+                    total_expectation_hist += hist  # Add
+        else:
+            files = expectation_dict[target_group]
+            total_expectation_hist = self.get_hist_from_group(files, target_group, second_axis_postfix)
+            total_expectation_hist.set_hist_config(self.bin_width_norm, self.axis_steering, self.normalize)
+
         total_expectation_hist.set_hist_config(self.bin_width_norm, self.axis_steering, self.normalize)
         return total_expectation_hist
 
-    def get_total_expectation_hist(self, mc_type='total', force_1d_output=False):
+    def get_total_expectation_hist(self, mc_type='total', target_group=None, force_1d_output=False):
 
         if mc_type == "total":
             expectation_dict = self.expectation_dict
         elif mc_type == "signal" and self.signal_dict:
             expectation_dict = self.signal_dict
-        elif mc_type == 'bg' and self.bg_dict:
+        elif mc_type == 'bg' and self.bg_dict:  # TODO bg:VV
             expectation_dict = self.bg_dict
         else:
             return
 
         if self.second_axis_postfix is None:
-            total_expectation_hist = self.make_expectation_hist(expectation_dict)  # dict, hist, second_axis_postfix
+            total_expectation_hist = self.make_expectation_hist(expectation_dict,
+                                                                target_group=target_group)
             if force_1d_output:
                 return total_expectation_hist.get_1d_hists()
             else:
@@ -159,6 +171,8 @@ class HistProducer:
         else:
             total_expectation_hists = []
             for postfix in self.second_axis_postfix:
-                total_expectation_hist = self.make_expectation_hist(expectation_dict, postfix)
+                total_expectation_hist = self.make_expectation_hist(expectation_dict,
+                                                                    target_group=target_group,
+                                                                    second_axis_postfix=postfix)
                 total_expectation_hists.append(total_expectation_hist)
             return total_expectation_hists

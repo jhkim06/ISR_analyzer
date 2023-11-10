@@ -12,10 +12,11 @@ def calculate_squared_root_sum(raw_df, reg_expression, new_col_name="total error
 
 
 class ISRHists:
-    def __init__(self, mass_hist, *pt_hist, mass_windows=None):  # mass windows
+    def __init__(self, mass_hist, *pt_hist, mass_windows=None, pt_window=None):  # mass windows
 
         self.tunfold_bins = dict()
         self.mass_windows = mass_windows
+        self.pt_window = pt_window
 
         # TODO use ISRHists as input to unfold
         self.mass_2d_hist = None
@@ -25,6 +26,11 @@ class ISRHists:
         if "tunfold" in mass_hist.hist_name:
             self.mass_2d_hist = mass_hist
             self.mass_isr_hist = mass_hist.get_1d_hists()[0]
+
+            bin_name, _ = self.mass_2d_hist.get_bin_name()
+            mass_unfold_bin = self.mass_2d_hist.get_unfold_bin(bin_name)
+            edges = mass_unfold_bin.GetDistributionBinning(1)
+            self.pt_window = [(edges[i], edges[i+1]) for i in range(len(edges)-1)]
         else:
             self.mass_isr_hist = mass_hist
 
@@ -40,21 +46,23 @@ class ISRHists:
         else:
             self.pt_isr_hists = pt_hist
 
-    def get_pt_hist(self, mass_index, bin_width_norm=False):
+    def get_pt_hist(self, mass_index, bin_width_norm=False, normalize=False):
         # TODO error handle for invalid mass_index
         if mass_index == -1:
             for index, hist in enumerate(self.pt_isr_hists):
-                hist.set_hist_config(bin_width_norm, '')
-                text = ("{:.0f}".format(float(self.mass_windows[index][0])) + r"$\mathit{ < m < }$" +
+                hist.set_hist_config(bin_width_norm, '', normalize=normalize)
+                text = ("{:.0f}".format(float(self.mass_windows[index][0])) + r"$ < \mathit{m} < $" +
                         "{:.0f}".format(float(self.mass_windows[index][1])) + " GeV")
                 hist.set_text_for_plot(text)
             return self.pt_isr_hists
         else:
-            self.pt_isr_hists[mass_index].set_hist_config(bin_width_norm, '')
+            self.pt_isr_hists[mass_index].set_hist_config(bin_width_norm, '', normalize=normalize)
             return self.pt_isr_hists[mass_index]
 
     def get_mass_hist(self, bin_width_norm=False):
         self.mass_isr_hist.set_hist_config(bin_width_norm, '')
+        text = r"$\mathit{p_T } < $" + "{:.0f}".format(float(self.pt_window[0][1])) + " GeV"
+        self.mass_isr_hist.set_text_for_plot(text)
         return self.mass_isr_hist
 
     def get_isr_dataframe(self, binned_mean=False):
