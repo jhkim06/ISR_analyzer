@@ -46,6 +46,9 @@ class ISRHists:
         else:
             self.pt_isr_hists = pt_hist
 
+    def number_of_measurements(self):
+        return len(self.mass_windows)
+
     def get_pt_hist(self, mass_index, bin_width_norm=False, normalize=False):
         # TODO error handle for invalid mass_index
         if mass_index == -1:

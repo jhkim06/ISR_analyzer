@@ -72,6 +72,7 @@ class ISRAnalyzer(Analyzer):
 
         self.mass_unfolders = []
         self.pt_unfolders = []
+        # TODO method to return number of data points
 
         # results
         # self.data_isr_hists = None
@@ -81,12 +82,21 @@ class ISRAnalyzer(Analyzer):
         self.unfolded_isr_hists = None
         self.full_phase_isr_hists = None
 
+        self.analysis_finished = False
+
     def do_analysis(self):
         self.set_unfolders()
         self.unfold()
         self.acceptance_corrections()
 
         # generator level study
+
+    def number_of_measurements(self):
+        if self.full_phase_isr_hists is None:
+            print("Run analysis first...")
+            return
+        else:
+            return self.full_phase_isr_hists.number_of_measurements()
 
     def channel_label(self):
         if self.channel == "ee":

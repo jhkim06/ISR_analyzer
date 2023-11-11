@@ -2,6 +2,19 @@ from FilePather import FilePather
 from ISRAnalyzer import ISRAnalyzer
 from collections import namedtuple
 from Plotter import Plotter
+from Combiner import Combiner
+import pandas as pd
+import ROOT
+
+
+def make_combiner_input(df, i):
+    index_name = df.iloc[i].index[1:-1]  # drop mass_window and total error
+    values = df.iloc[i].values[1:-1]
+
+    combiner_input = [(index_name[index], values[index])
+                      for index in range(len(index_name))]
+    combiner_input = (combiner_input[0], combiner_input[1:])
+    return combiner_input
 
 
 def make_axis_label(channel, is_mass=True):
@@ -90,12 +103,6 @@ class Thesis:
         self.analyzers[experiment_name + "_" + channel + period +
                        postfix + signal_prefix] = analyzer
 
-    def get_combined_results(self, *hist_info):
-        # loop over pairs of pt, mass values
-        # loop over hists
-        # combine
-        pass
-
     def draw_pt_distributions(self, *hist_info, channel="ee",
                               ratio_label=None,
                               ratio_ymin=0.5, ratio_ymax=1.5):
@@ -168,13 +175,14 @@ class Thesis:
 
         HistInfo = namedtuple('HistInfo',
                               ['name', 'hist_type', 'level_name', 'binned_mean', 'label', 'kwargs'])
-        # FIXME properly set plot path
+        # FIXME properly set output plot path
         plotter = Plotter('CMS', './plots/CMS')
 
         first_plot = True
         for info in hist_info:
             info = HistInfo(info[0], info[1], info[2], info[3], info[4], info[5])
-            mass_df, pt_df = self.analyzers[info.name].get_isr_df(info.hist_type, info.level_name,
+            mass_df, pt_df = self.analyzers[info.name].get_isr_df(info.hist_type,
+                                                                  info.level_name,
                                                                   info.binned_mean)
             label = info.label
             plotter.draw_isr_data_frame(mass_df, pt_df,
@@ -182,3 +190,67 @@ class Thesis:
                                         new_fig=first_plot,
                                         label=label, **info.kwargs)
             first_plot = False
+
+    def draw_combined_isr_plot(self, *hist_info, y_min=14, y_max=30):
+
+        HistInfo = namedtuple('HistInfo',
+                              ['name', 'hist_type', 'level_name', 'binned_mean', 'label', 'kwargs'])
+        plotter = Plotter('CMS', './plots/CMS')
+
+        measurement_dict = {}
+        for index, info in enumerate(hist_info):
+            info = HistInfo(info[0], info[1], info[2], info[3], info[4], info[5])
+            mass_df, pt_df = self.analyzers[info.name].get_isr_df(info.hist_type,
+                                                                  info.level_name,
+                                                                  info.binned_mean)
+            measurement_dict[info.name] = {}
+            measurement_dict[info.name]["mass"] = mass_df
+            measurement_dict[info.name]["pt"] = pt_df
+
+        # to get some information
+        mass_df = measurement_dict[hist_info[0][0]]["mass"]
+        pt_df = measurement_dict[hist_info[0][0]]["pt"]
+
+        number_of_rows = mass_df.shape[0]
+        combined_mass_df = pd.DataFrame(mass_df["mass_window"], columns=mass_df.columns)
+        combined_pt_df = pd.DataFrame(pt_df["mass_window"], columns=pt_df.columns)
+
+        for i in range(number_of_rows):
+            # make an input for Combiner
+            combiner_input_mass = []
+            combiner_input_pt = []
+            for info in hist_info:
+                info = HistInfo(info[0], info[1], info[2], info[3], info[4], info[5])
+
+                combiner_input = make_combiner_input(measurement_dict[info.name]["mass"], i)
+                combiner_input_mass.append(combiner_input)
+                combiner_input = make_combiner_input(measurement_dict[info.name]["pt"], i)
+                combiner_input_pt.append(combiner_input)
+
+            # combine!
+            mass_combiner = Combiner("Mean mass",
+                                     combiner_input_mass,
+                                     use_rho_same_channel=True)
+            mass_combiner.set_names()
+            mass_combiner.set_inputs()
+            mass_combiner.solve()
+
+            pt_combiner = Combiner("Mean pt",
+                                   combiner_input_pt,
+                                   use_rho_same_channel=True)
+            pt_combiner.set_names()
+            pt_combiner.set_inputs()
+            pt_combiner.solve()
+
+            # update dataframe
+            combined_mass_df.loc[i, "mean":] = (
+                mass_combiner.get_result_list())
+            combined_pt_df.loc[i, "mean":] = (
+                pt_combiner.get_result_list())
+            # now make df from combined mass and pt
+
+        plotter.draw_isr_data_frame(combined_mass_df, combined_pt_df,
+                                    ymin=y_min, ymax=y_max,
+                                    new_fig=True,
+                                    label="Combined result",
+                                    color="black", marker="o", linestyle="none", ms=8)

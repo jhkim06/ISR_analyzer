@@ -1,5 +1,4 @@
 import ROOT
-import ctypes
 import numpy as np
 
 
@@ -13,6 +12,11 @@ for_pull = "%4.2f"
 for_chi = "%5.3f"
 for_unit = " GeV"
 
+# Define global pointer variables
+ROOT.gInterpreter.Declare("TString* EstNam;")
+ROOT.gInterpreter.Declare("TString* UncNam;")
+ROOT.gInterpreter.Declare("TString* ObsNam;")
+
 
 class Combiner:
     def __init__(self,
@@ -21,10 +25,10 @@ class Combiner:
                  use_rho_same_channel=True,
                  ):
         self.rho_same_channel = {
-            "stat": 0.0, "IDsf": 0.0
+            "stat error": 0.0, "IDsf": 0.0
         }
         self.rho_same_period = {
-            "stat": 0.0, "IDsf": 1.0
+            "stat error": 0.0, "IDsf": 1.0
         }
 
         self.n_est = len(estimation_info)
@@ -61,39 +65,26 @@ class Combiner:
         for uncertainty in self.estimation_info[0][1]:
             self.unc_names.append(uncertainty[0])
 
-    def set_name_for_estimation(self):
-        name_string = "{"
-        for estimation in self.estimation_info:
-            name_string = name_string + "\"" + estimation[0][0] + "\","
-        name_string += "};"
+    def set_name_for_estimation(self, name_est=None):
+        ROOT.gInterpreter.ProcessLine(f"EstNam = new TString[{self.n_est}];")
+        for index, estimation in enumerate(self.estimation_info):
+            ROOT.gInterpreter.ProcessLine(f"EstNam[{index}] = \"{estimation}\";")
 
-        cpp_string = f"const TString NamEst[{self.n_est}] = "
-        cpp_string += name_string
-        cpp_string += "const TString *const p_NamEst = &NamEst[0];"
-        print(cpp_string)
-        ROOT.gInterpreter.Declare(cpp_string)
-        self.blue.FillNamEst(ROOT.p_NamEst)
+        # self.blue.FillNamEst(ROOT.p_NamEst)
+        self.blue.FillNamEst(ROOT.EstNam)
 
     def set_name_for_uncertainty(self):
-        name_string = "{"
-        for uncertainty in self.estimation_info[0][1]:
-            name_string = name_string + "\"" + uncertainty[0] + "\","
-        name_string += "};"
+        ROOT.gInterpreter.ProcessLine(f"UncNam = new TString[{self.n_unc}];")
+        for index, uncertainty in enumerate(self.estimation_info[0][1]):
+            ROOT.gInterpreter.ProcessLine(f"UncNam[{index}] = \"{uncertainty}\";")
 
-        cpp_string = f"const TString NamUnc[{self.n_unc}] = "
-        cpp_string += name_string
-        cpp_string += "const TString *const p_NamUnc = &NamUnc[0];"
-        print(cpp_string)
-        ROOT.gInterpreter.Declare(cpp_string)
-        self.blue.FillNamUnc(ROOT.p_NamUnc)
+        self.blue.FillNamUnc(ROOT.UncNam)
 
     def set_name_for_observable(self):
-        cpp_string = f"const TString NamObs[1] = "
-        cpp_string += "{\"" + self.observable_name + "\"};"
-        cpp_string += "const TString *const p_NamObs = &NamObs[0];"
-        print(cpp_string)
-        ROOT.gInterpreter.Declare(cpp_string)
-        self.blue.FillNamObs(ROOT.p_NamObs)
+        ROOT.gInterpreter.ProcessLine(f"ObsNam = new TString[1];")
+        ROOT.gInterpreter.ProcessLine(f"ObsNam[0] = \"{self.observable_name}\";")
+
+        self.blue.FillNamObs(ROOT.ObsNam)
 
     def set_names(self):
         self.set_name_for_estimation()
@@ -106,7 +97,7 @@ class Combiner:
             self.blue.FillEst(i,
                               np.array(self.estimation_values[estimation_index:])
                               )
-            print(self.estimation_values[estimation_index:])
+            # print(self.estimation_values[estimation_index:])
             estimation_index += self.n_unc + 1
 
     def fill_correlation(self):
